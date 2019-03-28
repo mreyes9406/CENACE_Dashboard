@@ -6,11 +6,11 @@ This project will offer users a friendly interface to interact with CENACE’s d
 
 Our dashboard will permit the user to select a specific period to analyze the data (between 2016-2019), and show three visualizations to explore the results:
 
-* An interactive map, highlighting the maximum, minimum and average price in each of the four charging zones during the selected period,    in both the day-ahead and real-time markets. 
+* An interactive map, highlighting the maximum, minimum and average price in each of the four charging zones during the selected period for the real-time and day-ahead markets.
 
 * A line chart showing the system’s running average price for the day-ahead and real-time markets.
   
-* A stacked bar chart, highlighting the contribution of each price component-losses, energy, congestion- to the total daily average       price.
+* A bar chart, highlighting the contribution of each price component-losses, energy, congestion- to the total daily average price.
 
 ## Datasets
 The entire data will be retrieved from CENACE’s API containing information about marginal energy prices in the three Mexican systems: BCS, Baja California Sur and the National Interconnected System. Th API documentation can be consulted in:
