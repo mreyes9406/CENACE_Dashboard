@@ -31,7 +31,7 @@ The entire data will be retrieved from CENACE’s API containing information abo
 
 ## Final Design Sketch
 
-![Final Dashboard 1](https://github.com/mreyes9406/CENACE_Dashboard/blob/master/Images/Image_4.png)
+![Final Dashboard 1](https://github.com/mreyes9406/CENACE_Dashboard/blob/master/Images/Image_4_c.png)
 ![Final Dashboard 2](https://github.com/mreyes9406/CENACE_Dashboard/blob/master/Images/Image_5.png)
 
 ## Github Link
