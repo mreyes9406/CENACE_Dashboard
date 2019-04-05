@@ -13,118 +13,159 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-
-#################################################
-# Database Setup
-#################################################
-
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///resources/database.sqlite"
-db = SQLAlchemy(app)
-
-# reflect an existing database into a new model
-Base = automap_base()
-# reflect the tables
-Base.prepare(db.engine, reflect=True)
-
-# Save references to each table
-zones = Base.classes.zones_catalogue
-prices = Base.classes.prices_table
-
-
+engine = create_engine("sqlite:///resources/database.sqlite")
 
 @app.route("/")
 def index():
-    """Return the homepage."""
+    # Return the homepage.
     return render_template("index.html")
 
-
 @app.route("/period/<selected_date_1>/<selected_date_2>")
-def selected_period_info(selected_date):
-    """Return the MDA and MTR prices for a given date."""
-    sel = [
-        prices.sistema,
-        prices.zona_carga,
-        func.date(prices.fecha).label('fecha'),
-        func.avg(prices.precio_mda).label('precio_mda_promedio'),
-        func.avg(prices.precio_energia_mda).label('precio_energia_mda_promedio'),
-        func.avg(prices.precio_perdida_mda).label('precio_perdida_mda_promedio'),
-        func.avg(prices.precio_congestion_mda).label('precio_congestion_mda_promedio'),
-        func.avg(prices.precio_mtr).label('precio_mtr_promedio'),
-        func.avg(prices.precio_energia_mtr).label('precio_energia_mtr_promedio'),
-        func.avg(prices.precio_perdida_mtr).label('precio_perdida_mtr_promedio'),
-        func.avg(prices.precio_congestion_mtr).label('precio_congestion_mtr_promedio')
-    ]
+def selected_period_info(selected_date_1, selected_date_2):
+    # Return the MDA and MTR prices for a given date.
+    days_table = engine.execute(
+                                   f"SELECT DISTINCT\
+                                      DATE(fecha) AS dias\
+                                      FROM prices_table\
+                                    WHERE dias BETWEEN DATE('{selected_date_1}') AND DATE('{selected_date_2}')"
+    )
 
-    results = db.session.query(*sel).\
-        filter(prices.fecha == func.date(selected_date)).\
-            group_by(func.date(prices.fecha)).all()
+    period_days = []
+    for day in days_table:
+        period_days.append(day[0])
+    
+    table_1 = engine.execute( 
+                                "SELECT\
+                                   sistema,\
+                                   DATE(fecha) AS fecha,\
+                                   zona_carga,\
+                                   AVG(CAST(precio_mda AS DECIMAL)) AS precio_mda_prom,\
+                                   AVG(CAST(precio_energia_mda AS DECIMAL)) AS precio_energia_mda_prom,\
+                                   AVG(CAST(precio_perdida_mda AS DECIMAL)) AS precio_perdida_mda_prom,\
+                                   AVG(CAST(precio_congestion_mda AS DECIMAL)) AS precio_congestion_mda_prom,\
+                                   AVG(CAST(precio_mtr AS DECIMAL)) AS precio_mtr_prom,\
+                                   AVG(CAST(precio_energia_mtr AS DECIMAL)) AS precio_energia_mtr_prom,\
+                                   AVG(CAST(precio_perdida_mtr AS DECIMAL)) AS precio_perdida_mtr_prom,\
+                                   AVG(CAST(precio_congestion_mtr AS DECIMAL)) AS precio_congestion_mtr_prom\
+                                 FROM prices_table\
+                                 WHERE fecha BETWEEN DATE('" + selected_date_1 + "') AND DATE('" + selected_date_2 + "')\
+                                 GROUP BY fecha, zona_carga, sistema\
+                                 ORDER BY sistema, fecha"
+                                )
+    zonas = []
+    for row in table_1:
+        if row[2] not in zonas:
+            zonas.append(row[2])
 
-    dates_qry = db.session.query(prices.fecha.distinct()).\
-        filter(prices.fecha >= selected_date_1).\
-        filter(prices.fecha <= selected_date_2).all()
+    precios = ['precio_mda_promedio', 'precio_energia_mda_promedio', 'precio_perdida_mda_promedio', 'precio_congestion_mda_promedio',
+               'precio_mtr_promedio', 'precio_energia_mtr_promedio', 'precio_perdida_mtr_promedio', 'precio_congestion_mtr_promedio']
 
-    # Create a dictionary entry for each entry
-    period_data = {}
-    for result in results:
-        period_data["sistema"] = result[0]
-        period_data["zona_carga"] = result[1]
-        period_data["fecha"] = result[2]
-        period_data["precio_mda_promedio"] = result[3]
-        period_data["precio_energia_mda_promedio"] = result[4]
-        period_data["precio_perdida_mda_promedio"] = result[5]
-        period_data["precio_congestion_mda_promedio"] = result[6]
-        period_data["precio_mtr_promedio"] = result[7]
-        period_data["precio_energia_mtr_promedio"] = result[8]
-        period_data["precio_perdida_mtr_promedio"] = result[9]
-        period_data["precio_congestion_mtr_promedio"] = result[10]
-
-    print(period_data)
+    period_data = {
+        'period_days':period_days,
+        'dates':{
+            day:{
+                zone:{
+                    precio:[] for precio in precios
+                } for zone in zonas
+            } for day in period_days
+            }
+    }
+    
+    table_1 = engine.execute( 
+                                "SELECT\
+                                   sistema,\
+                                   DATE(fecha) AS fecha,\
+                                   zona_carga,\
+                                   AVG(CAST(precio_mda AS DECIMAL)) AS precio_mda_prom,\
+                                   AVG(CAST(precio_energia_mda AS DECIMAL)) AS precio_energia_mda_prom,\
+                                   AVG(CAST(precio_perdida_mda AS DECIMAL)) AS precio_perdida_mda_prom,\
+                                   AVG(CAST(precio_congestion_mda AS DECIMAL)) AS precio_congestion_mda_prom,\
+                                   AVG(CAST(precio_mtr AS DECIMAL)) AS precio_mtr_prom,\
+                                   AVG(CAST(precio_energia_mtr AS DECIMAL)) AS precio_energia_mtr_prom,\
+                                   AVG(CAST(precio_perdida_mtr AS DECIMAL)) AS precio_perdida_mtr_prom,\
+                                   AVG(CAST(precio_congestion_mtr AS DECIMAL)) AS precio_congestion_mtr_prom\
+                                 FROM prices_table\
+                                 WHERE fecha BETWEEN DATE('" + selected_date_1 + "') AND DATE('" + selected_date_2 + "')\
+                                 GROUP BY fecha, zona_carga, sistema\
+                                 ORDER BY sistema, fecha"
+                                )
+    for row in table_1:
+        period_data['dates'][row[1]][row[2]]['precio_mda_promedio'].append(row[3])
+        period_data['dates'][row[1]][row[2]]['precio_energia_mda_promedio'].append(row[4])
+        period_data['dates'][row[1]][row[2]]['precio_perdida_mda_promedio'].append(row[5])
+        period_data['dates'][row[1]][row[2]]['precio_congestion_mda_promedio'].append(row[6])
+        period_data['dates'][row[1]][row[2]]['precio_mtr_promedio'].append(row[7])
+        period_data['dates'][row[1]][row[2]]['precio_energia_mtr_promedio'].append(row[8])
+        period_data['dates'][row[1]][row[2]]['precio_perdida_mtr_promedio'].append(row[9])
+        period_data['dates'][row[1]][row[2]]['precio_congestion_mtr_promedio'].append(row[10])
+        
     return jsonify(period_data)
 
-@app.route("/<date>")
-def selected_period_days():
-    """Return a list of sample names."""
+@app.route("/date/<date>")
+def selected_day_info(date):
 
-    sel_1 = [
-        func.avg(prices.precio_energia_mda).label('precio_energia_mda_promedio'),
-        func.avg(prices.precio_perdida_mda).label('precio_perdida_mda_promedio'),
-        func.avg(prices.precio_congestion_mda).label('precio_congestion_mda_promedio'),
-        func.avg(prices.precio_energia_mtr).label('precio_energia_mtr_promedio'),
-        func.avg(prices.precio_perdida_mtr).label('precio_perdida_mtr_promedio'),
-        func.avg(prices.precio_congestion_mtr).label('precio_congestion_mtr_promedio')
-    ]
+    precios = ['precio_mda_promedio', 'precio_energia_mda_promedio', 'precio_perdida_mda_promedio', 'precio_congestion_mda_promedio',
+               'precio_mtr_promedio', 'precio_energia_mtr_promedio', 'precio_perdida_mtr_promedio', 'precio_congestion_mtr_promedio']
 
-    results_1 = db.session.query(*sel_1).\
-        filter(prices.fecha == date).\
-            group_by(prices.fecha).all()    
+    day_data = {
+                date: {
+                    precio:[] for precio in precios
+                }
+            }
 
-    sel_2 = [
-        prices.zona_carga,
-        prices.fecha,
-        func.avg(prices.precio_mda).label('precio_mda_promedio'),
-        func.avg(prices.precio_mtr).label('precio_mtr_promedio')        
-    ]
+    table_2 = engine.execute( "SELECT\
+                                   DATE(fecha) AS fecha,\
+                                   AVG(CAST(precio_mda AS DECIMAL)) AS precio_mda_prom,\
+                                   AVG(CAST(precio_energia_mda AS DECIMAL)) AS precio_energia_mda_prom,\
+                                   AVG(CAST(precio_perdida_mda AS DECIMAL)) AS precio_perdida_mda_prom,\
+                                   AVG(CAST(precio_congestion_mda AS DECIMAL)) AS precio_congestion_mda_prom,\
+                                   AVG(CAST(precio_mtr AS DECIMAL)) AS precio_mtr_prom,\
+                                   AVG(CAST(precio_energia_mtr AS DECIMAL)) AS precio_energia_mtr_prom,\
+                                   AVG(CAST(precio_perdida_mtr AS DECIMAL)) AS precio_perdida_mtr_prom,\
+                                   AVG(CAST(precio_congestion_mtr AS DECIMAL)) AS precio_congestion_mtr_prom\
+                                 FROM prices_table\
+                                 WHERE fecha = DATE('" + date + "')"
+    )
 
-    results_1 = db.session.query(*sel_2).\
-        filter(prices.fecha == date).\
-            group_by(prices.fecha).all()    
+    for row in table_2:
+        day_data[date]['precio_mda_promedio'].append(row[1])
+        day_data[date]['precio_energia_mda_promedio'].append(row[2])
+        day_data[date]['precio_perdida_mda_promedio'].append(row[3])
+        day_data[date]['precio_congestion_mda_promedio'].append(row[4])
+        day_data[date]['precio_mtr_promedio'].append(row[5])
+        day_data[date]['precio_energia_mtr_promedio'].append(row[6])
+        day_data[date]['precio_perdida_mtr_promedio'].append(row[7])
+        day_data[date]['precio_congestion_mtr_promedio'].append(row[8])
 
+    return jsonify(day_data)
 
-    day_data = {}
-    for result in results:
-        period_data["fecha"] = result[2]
-        period_data["precio_mda_promedio"] = result[3]
-        period_data["precio_energia_mda_promedio"] = result[4]
-        period_data["precio_perdida_mda_promedio"] = result[5]
-        period_data["precio_congestion_mda_promedio"] = result[6]
-        period_data["precio_mtr_promedio"] = result[7]
-        period_data["precio_energia_mtr_promedio"] = result[8]
-        period_data["precio_perdida_mtr_promedio"] = result[9]
-        period_data["precio_congestion_mtr_promedio"] = result[10]
+@app.route("/zone/<zone>")
+def selected_period_days(zone):
 
+    precios = ['precio_mda_promedio', 'precio_mtr_promedio']
 
-    # Return a list of the column names (sample names)
-    return jsonify(list(df.columns)[2:])
+    zone_data = {
+                'zone':zone,
+                 date: {
+                     precio:[] for precio in precios
+                 }
+             }
+    table_3 = engine.execute(
+                                "SELECT\
+                                   zona_carga,\
+                                   fecha,\
+                                   AVG(CAST(precio_mda AS DECIMAL)) AS precio_mda_prom,\
+                                   AVG(CAST(precio_mtr AS DECIMAL)) AS precio_mtr_prom\
+                                FROM prices_table\
+                                WHERE DATE(fecha) BETWEEN DATE ('" + date + "', '-6 days') AND DATE('" + date + "') AND zona_carga = " + zone + "\
+                                GROUP BY zona_carga, fecha"
+    )
+
+    for row in table_3:
+        zone_data[date]['precio_mda_promedio'].append(row[2])
+        zone_data[date]['precio_mtr_promedio'].append(row[3])
+
+    return jsionfy(zone_data)
 
 if __name__ == "__main__":
     app.run()
