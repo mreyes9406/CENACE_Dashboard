@@ -24,7 +24,7 @@ def index():
 def selected_period_info(selected_date_1, selected_date_2):
     # Return the MDA and MTR prices for a given date.
     days_table = engine.execute(
-                                   f"SELECT DISTINCT\
+                                   "SELECT DISTINCT\
                                       DATE(fecha) AS dias\
                                       FROM prices_table\
                                     WHERE dias BETWEEN DATE('" + selected_date_1 + "') AND DATE('" + selected_date_2 + "')"
