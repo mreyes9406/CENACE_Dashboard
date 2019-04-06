@@ -27,7 +27,7 @@ def selected_period_info(selected_date_1, selected_date_2):
                                    f"SELECT DISTINCT\
                                       DATE(fecha) AS dias\
                                       FROM prices_table\
-                                    WHERE dias BETWEEN DATE('{selected_date_1}') AND DATE('{selected_date_2}')"
+                                    WHERE dias BETWEEN DATE('" + selected_date_1 + "') AND DATE('" + selected_date_2 + "')"
     )
 
     period_days = []
